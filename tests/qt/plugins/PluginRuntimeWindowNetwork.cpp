@@ -545,7 +545,8 @@ void PluginRuntimeTest::tcpHalfCloseReceivesResponseAfterFin()
     socklen_t length = sizeof(address);
     QVERIFY(::getsockname(listener, reinterpret_cast<sockaddr *>(&address), &length) == 0);
     std::atomic<bool> sawFin = false;
-    std::jthread peer([&] {
+    // Apple libc++ only exposes std::jthread under -fexperimental-library.
+    std::thread peer([&] {
         pollfd ready{listener, POLLIN, 0};
         if (::poll(&ready, 1, 5000) <= 0)
             return;
@@ -565,6 +566,10 @@ void PluginRuntimeTest::tcpHalfCloseReceivesResponseAfterFin()
             ::shutdown(socket, SHUT_WR);
         }
         ::close(socket);
+    });
+    const auto peerGuard = qScopeGuard([&peer] {
+        if (peer.joinable())
+            peer.join();
     });
     auto *open =
         scope->net()->tcp()->connect({{"host", "127.0.0.1"}, {"port", ntohs(address.sin_port)}});

@@ -1268,7 +1268,18 @@ impl RangeServer {
             while !stop_flag.load(Ordering::Acquire) {
                 let (mut stream, _) = match listener.accept() {
                     Ok(pair) => pair,
-                    Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
+                    // A transient error (for example an aborted handshake) must not stop the
+                    // test server and turn later connections into transport failures.
+                    Err(err)
+                        if matches!(
+                            err.kind(),
+                            std::io::ErrorKind::WouldBlock
+                                | std::io::ErrorKind::Interrupted
+                                | std::io::ErrorKind::ConnectionAborted
+                                | std::io::ErrorKind::ConnectionReset
+                                | std::io::ErrorKind::TimedOut
+                        ) =>
+                    {
                         std::thread::sleep(Duration::from_millis(5));
                         continue;
                     }
@@ -1276,7 +1287,8 @@ impl RangeServer {
                 };
                 let root = root.clone();
                 std::thread::spawn(move || {
-                    let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
+                    // Long enough that a loaded runner does not drop idle keep-alive connections.
+                    let _ = stream.set_read_timeout(Some(Duration::from_secs(30)));
                     loop {
                         let mut buf = Vec::new();
                         let mut byte = [0u8; 1];

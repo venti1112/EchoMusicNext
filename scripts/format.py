@@ -110,7 +110,10 @@ def format_sources(qmlformat, check):
         p
         for p in files
         if p.suffix in {".mjs", ".js", ".ts", ".html"}
-        and not (p.suffix == ".ts" and (ROOT / p).read_text().lstrip().startswith("<?xml"))
+        and not (
+            p.suffix == ".ts"
+            and (ROOT / p).read_text(encoding="utf-8").lstrip().startswith("<?xml")
+        )
     ]
     configs = [
         Path("CMakePresets.json"),
