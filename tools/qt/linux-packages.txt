@@ -51,6 +51,7 @@ libswresample-dev
 libswscale-dev
 libpulse-dev
 libpipewire-0.3-dev
+libasound2-dev
 libva-dev
 libssl-dev
 libnss3-dev
